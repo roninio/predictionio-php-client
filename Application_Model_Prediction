@@ -1,0 +1,135 @@
+<?php
+
+
+/**
+	Class to interact with predicion.io for PHP
+	Where you cannot or dont want to use the PHP SDK given by prediction.io. 
+	This one will work with zend framework. You can change the curl API to your one. 
+**/
+class Application_Model_Prediction
+{
+
+	public $KEY = ''; // small
+	public $KEY2 = '';
+	public $DAYS = 20;
+	public $SERVER_IP = "5";
+	public $SERVER_IP_2 = "";
+
+
+
+	private function getKey(){
+
+		if(empty($_REQUEST['e'])){
+			return $this->KEY;
+		} 
+
+		return $this->KEY2;
+	}
+
+
+	private function getServer(){
+		if(empty($_REQUEST['e'])){
+			return $this->SERVER_IP;
+		} 
+
+		return $this->SERVER_IP_2;
+	}
+
+
+	public function addClick($username, $cell_id){
+
+		$this->createUser($username);
+		$site_id = $this->createSite($cell_id);
+			if($site_id > 0){
+				$this->u2i($site_id, $username,'conversion');
+		}
+	}
+
+
+	public function getRecomendation($username, $engine ='recom3'){
+		$key = $this->getKey();
+		$server = $this->getServer();
+		$url = "http://".$server.":8000/engines/itemrec/". $engine . "/topn.json?pio_n=20&pio_uid=$username&pio_appkey=".$key;
+//		echo $url.'<br><br>';
+
+		$config = array(
+			'adapter'   => 'Zend_Http_Client_Adapter_Curl',
+			'curloptions' => array(CURLOPT_FOLLOWLOCATION => false),
+		);
+		//$config = array('maxredirects' => 0, 'timeout'      => 30);
+		try{
+			$client = new Zend_Http_Client($url);
+			$request = $client->request('GET');
+			$tags = $client->request()->getBody();	
+		}
+		catch(Exception $e){
+			return array();
+		}
+		
+		$list = json_decode($tags);
+		if(empty($list)) die('empty list');
+		
+		foreach($list as $values){
+			foreach($values as $value){
+				if(ctype_digit(strval($value))){
+					
+					// build your response here. They is general to the problem
+					$userList[] = $sitesList;
+				
+				}
+			}
+		}
+		return json_encode($userList);
+	}
+
+	public function u2i($site_id, $user_id, $action = 'conversion'){
+		$url = "/actions/u2i.json?pio_iid=$site_id&pio_uid=$user_id&pio_action={$action}";
+		$this->curl($url);
+	}
+
+	public function createItem($item_id){
+		
+		if($site_id > 0){
+			$url = "/items.json?pio_iid=$site_id&pio_itypes=1";
+			$this->curl($url);
+		}
+		return $site_id;
+	}
+
+	public function createUser($username){
+
+		$url = "/users.json?pio_uid=$username";
+		$this->curl($url);
+
+		
+		return;
+	}
+
+	private function curl($url){
+		
+		$key = $this->getKey();
+		$server = $this->getServer();
+		$url = "http://".$server.":8000". $url . "&pio_appkey=$key";
+		//echo "<br>". $url ."<br>";
+	
+		$config = array(
+			'adapter'   => 'Zend_Http_Client_Adapter_Curl',
+			'curloptions' => array(CURLOPT_FOLLOWLOCATION => false,CURLOPT_POST => true),
+		);
+		//$config = array('maxredirects' => 0, 'timeout'      => 30);
+		try{
+			$client = new Zend_Http_Client($url, $config);
+			$request = $client->request('POST');
+			$tags = $client->request()->getBody();	
+		}
+		catch(Exception $e){
+			return array();
+		}
+		//$client = new Zend_Http_Client("http://54.196.243.40:8000/users", $config);
+
+		
+		return $tags;
+	}
+
+
+}
